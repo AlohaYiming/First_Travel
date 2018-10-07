@@ -22,6 +22,11 @@ all_score = []
 all_data1 = []
 all_data2 = []
 scores = []
+trindex = np.load('trindex.npy')
+clslist = []
+for line in open('./data/trainset_txt_img_cat.list'):
+    cls = line.split('\t')[2]
+    clslist.append(int(cls))
 # Siamese model
 
 class base_model(object):
@@ -668,6 +673,39 @@ class siamese_cgcnn_cor(cgcnn):
                 with tf.control_dependencies([op_averages]):
                     loss_average = tf.identity(averages.average(loss), name='control')
             return loss, loss_average
+    
+    def getdegree(idx,degree):
+        #print('idx:',len(idx),idx)
+        #print('degree:',len(degree),degree)
+        degree2 = degree
+        for i in range(256):
+            a = trindex[0][idx[i]]
+            b = trindex[1][idx[i]]
+            #prinit("a,b:",clslist[a],clslist[b],degree[0][i])
+            if clslist[a] == clslist[b]:
+                if degree[0][i] < -0.54:
+                    degree2[0][i] = 0.1
+                elif degree[0][i] > -0.54 and degree[0][i] < -0.42:
+                    degree2[0][i] = 0.2
+                elif degree[0][i] > -0.42 and degree[0][i]< -0.36:
+                    degree2[0][i] = 0.3
+                elif degree[0][i] > -0.36 and degree[0][i]< -0.30:
+                    degree2[0][i] = 0.4
+                elif degree[0][i] > -0.30 and degree[0][i] < -0.25:
+                    degree2[0][i] = 0.5
+                elif degree[0][i] > -0.25 and degree[0][i]< -0.20:
+                    degree2[0][i] = 0.6
+                elif degree[0][i] > -0.20 and degree[0][i]< -0.16:
+                    degree2[0][i] = 0.7
+                elif degree[0][i] > -0.16 and degree[0][i] < 0:
+                    degree2[0][i] = 0.8
+                elif degree[0][i] > 0:
+                    degree2[0][i] = 0.9
+            else: degree2[0][i] = 0
+            #print('degree2:',degree2)
+            return degree2
+
+
 
     def fit(self, train_data1,train_data2,train_labels, val_data1, val_data2,val_labels):
         print('sm-fit')
@@ -705,9 +743,11 @@ class siamese_cgcnn_cor(cgcnn):
                 batch_data2 = batch_data2.toarray()  # convert sparse matrices
             
             label22 =np.array(base_model.search(self,batch_data1,batch_data2,0))
+            degree = siamese_cgcnn_cor.getdegree(idx,label22)
+            #print('degree:',degree)
             nsum = 0
             for i in range(256):
-                nsum += label22[0][i]
+                nsum += degree[0][i]
             label2 = nsum/256.0
             print('label2',label2)
             
